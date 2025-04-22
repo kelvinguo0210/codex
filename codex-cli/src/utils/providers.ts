@@ -42,4 +42,9 @@ export const providers: Record<
     baseURL: "https://api.groq.com/openai/v1",
     envKey: "GROQ_API_KEY",
   },
+  lightllm: {
+    name: "LightLLM",
+    baseURL: process.env["LIGHTLLM_BASE_URL"] || "http://54.149.131.73:4000",
+    envKey: "LIGHTLLM_API_KEY",
+  },
 };

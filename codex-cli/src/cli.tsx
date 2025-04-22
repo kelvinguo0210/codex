@@ -237,20 +237,29 @@ let config = loadConfig(undefined, undefined, {
 });
 
 const prompt = cli.input[0];
-const model = cli.flags.model ?? config.model;
+let model = cli.flags.model ?? config.model;
 const imagePaths = cli.flags.image;
-const provider = cli.flags.provider ?? config.provider ?? "openai";
+const provider = cli.flags.provider ?? config.provider ?? "lightllm";
+
+// Set default model for LightLLM provider
+if (provider === "lightllm" && !cli.flags.model) {
+  model = "claude-3-7-sonnet";
+}
 const apiKey = getApiKey(provider);
 
 if (!apiKey) {
+  const providerInfo = providers[provider.toLowerCase()];
+  const envKey = providerInfo?.envKey || "OPENAI_API_KEY";
+  
   // eslint-disable-next-line no-console
   console.error(
     `\n${chalk.red(`Missing ${provider} API key.`)}\n\n` +
-      `Set the environment variable ${chalk.bold("OPENAI_API_KEY")} ` +
+      `Set the environment variable ${chalk.bold(envKey)} ` +
       `and re-run this command.\n` +
-      `You can create a key here: ${chalk.bold(
-        chalk.underline("https://platform.openai.com/account/api-keys"),
-      )}\n`,
+      (provider.toLowerCase() === "openai" ? 
+        `You can create a key here: ${chalk.bold(
+          chalk.underline("https://platform.openai.com/account/api-keys"),
+        )}\n` : ""),
   );
   process.exit(1);
 }

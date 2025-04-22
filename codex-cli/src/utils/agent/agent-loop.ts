@@ -246,14 +246,20 @@ export class AgentLoop {
     const apiKey = getApiKey(this.provider);
     const baseURL = getBaseUrl(this.provider);
 
+    // When using non-OpenAI providers, we still need a dummy API key to satisfy OpenAI SDK requirements
+    const dummyApiKey = "dummy-key-for-non-openai-provider";
+    
+    // For LightLLM provider, require API key
+    if (this.provider.toLowerCase() === "lightllm" && !apiKey) {
+      throw new Error("LIGHTLLM_API_KEY environment variable is required for the LightLLM provider");
+    }
+    
     this.oai = new OpenAI({
-      // The OpenAI JS SDK only requires `apiKey` when making requests against
-      // the official API.  When running unit‑tests we stub out all network
-      // calls so an undefined key is perfectly fine.  We therefore only set
-      // the property if we actually have a value to avoid triggering runtime
-      // errors inside the SDK (it validates that `apiKey` is a non‑empty
-      // string when the field is present).
-      ...(apiKey ? { apiKey } : {}),
+      // The OpenAI JS SDK requires an apiKey, even for non-OpenAI providers.
+      // When provider is not OpenAI, we use a dummy key if no real apiKey is available
+      apiKey: this.provider.toLowerCase() === "openai" 
+        ? (apiKey || "") // For OpenAI provider, use actual key or empty string 
+        : (apiKey || dummyApiKey), // For other providers, use actual key or dummy
       baseURL,
       defaultHeaders: {
         originator: ORIGIN,
@@ -262,6 +268,11 @@ export class AgentLoop {
       },
       ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
     });
+    
+    // Log the provider and API key being used (masked for security)
+    const maskedApiKey = apiKey ? apiKey.substring(0, 4) + "***" + apiKey.substring(apiKey.length - 4) : "Not set";
+    log(`Using provider: ${this.provider}, Base URL: ${baseURL}, API Key: ${maskedApiKey}`);
+    
 
     setSessionId(this.sessionId);
     setCurrentModel(this.model);
@@ -510,7 +521,7 @@ export class AgentLoop {
                 : (params: ResponseCreateParams) =>
                     responsesCreateViaChatCompletions(
                       this.oai,
-                      params as ResponseCreateParams & { stream: true },
+                      {...params, provider: this.provider} as ResponseCreateParams & { stream: true, provider: string },
                     );
             log(
               `instructions (length ${mergedInstructions.length}): ${mergedInstructions}`,

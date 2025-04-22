@@ -22,7 +22,9 @@ import {
   loadConfig,
   PRETTY_PRINT,
   INSTRUCTIONS_FILEPATH,
+  getBaseUrl,
 } from "./utils/config";
+import { providers } from "./utils/providers";
 import { createInputItem } from "./utils/input-utils";
 import { initLogger } from "./utils/logger/log";
 import { isModelSupportedForResponses } from "./utils/model-utils.js";
@@ -247,19 +249,39 @@ if (provider === "lightllm" && !cli.flags.model) {
 }
 const apiKey = getApiKey(provider);
 
+// Debug info - log active provider details
+const providerInfo = providers[provider.toLowerCase()];
+const providerBaseURL = getBaseUrl(provider);
+if (apiKey) {
+  // Only show if we have an API key
+  const maskedApiKey = apiKey.substring(0, 4) + "***" + apiKey.substring(apiKey.length - 4);
+  console.log(`Using provider: ${providerInfo?.name || provider}`);
+  console.log(`Base URL: ${providerBaseURL}`);
+  console.log(`API Key: ${maskedApiKey}`);
+}
+
 if (!apiKey) {
   const providerInfo = providers[provider.toLowerCase()];
-  const envKey = providerInfo?.envKey || "OPENAI_API_KEY";
+  const envKey = providerInfo?.envKey || "LIGHTLLM_API_KEY";
+  
+  // Print provider information for debugging
+  const providerBaseURL = getBaseUrl(provider);
+  const maskedApiKey = apiKey ? apiKey.substring(0, 4) + "***" + apiKey.substring(apiKey.length - 4) : "";
   
   // eslint-disable-next-line no-console
   console.error(
     `\n${chalk.red(`Missing ${provider} API key.`)}\n\n` +
+      `Current provider: ${chalk.bold(provider)}\n` +
+      `Base URL: ${chalk.bold(providerBaseURL)}\n` +
+      `API Key: ${maskedApiKey ? chalk.bold(maskedApiKey) : "Not set"}\n\n` +
       `Set the environment variable ${chalk.bold(envKey)} ` +
       `and re-run this command.\n` +
       (provider.toLowerCase() === "openai" ? 
         `You can create a key here: ${chalk.bold(
           chalk.underline("https://platform.openai.com/account/api-keys"),
-        )}\n` : ""),
+        )}\n` : "") +
+      (provider.toLowerCase() === "lightllm" ? 
+        `${chalk.bold(chalk.red("LIGHTLLM_API_KEY is required for the LightLLM provider."))}\n` : ""),
   );
   process.exit(1);
 }

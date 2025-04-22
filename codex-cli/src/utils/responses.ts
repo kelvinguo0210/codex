@@ -4,7 +4,7 @@ import type {
   Response,
 } from "openai/resources/responses/responses";
 // Define interfaces based on OpenAI API documentation
-type ResponseCreateInput = ResponseCreateParams;
+type ResponseCreateInput = ResponseCreateParams & { provider?: string };
 type ResponseOutput = Response;
 // interface ResponseOutput {
 //   id: string;
@@ -724,6 +724,12 @@ async function* streamResponses(
           : "unknown",
       message: error instanceof Error ? error.message : String(error),
       param: null,
+      // Log details for debugging
+      debug_info: {
+        provider: input.provider || (input.model.includes("claude") ? "anthropic" : "openai"),
+        base_url: (openai as any).baseURL || "unknown",
+        model: input.model,
+      },
     };
   }
 }

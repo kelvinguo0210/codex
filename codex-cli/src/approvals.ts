@@ -61,7 +61,14 @@ export type ApprovalPolicy =
    * where network access is disabled and writes are limited to a specific set
    * of paths.
    */
-  | "full-auto";
+  | "full-auto"
+  
+  /**
+   * DANGEROUS: All commands are auto-approved and run without a sandbox.
+   * This allows arbitrary code execution on the host system with no restrictions.
+   * Intended solely for ephemeral local testing in trusted environments.
+   */
+  | "dangerous-no-sandbox";
 
 /**
  * Tries to assess whether a command is safe to run, though may defer to the
@@ -150,14 +157,23 @@ export function canAutoApprove(
     }
   }
 
-  return policy === "full-auto"
-    ? {
-        type: "auto-approve",
-        reason: "Full auto mode",
-        group: "Running commands",
-        runInSandbox: true,
-      }
-    : { type: "ask-user" };
+  if (policy === "full-auto") {
+    return {
+      type: "auto-approve",
+      reason: "Full auto mode",
+      group: "Running commands",
+      runInSandbox: true,
+    };
+  } else if (policy === "dangerous-no-sandbox") {
+    return {
+      type: "auto-approve",
+      reason: "Dangerous no sandbox mode",
+      group: "Running commands",
+      runInSandbox: false,
+    };
+  } else {
+    return { type: "ask-user" };
+  }
 }
 
 function canAutoApproveApplyPatch(
@@ -189,18 +205,28 @@ function canAutoApproveApplyPatch(
     };
   }
 
-  return policy === "full-auto"
-    ? {
-        type: "auto-approve",
-        reason: "Full auto mode",
-        group: "Editing",
-        runInSandbox: true,
-        applyPatch: { patch: applyPatchArg },
-      }
-    : {
-        type: "ask-user",
-        applyPatch: { patch: applyPatchArg },
-      };
+  if (policy === "full-auto") {
+    return {
+      type: "auto-approve",
+      reason: "Full auto mode",
+      group: "Editing",
+      runInSandbox: true,
+      applyPatch: { patch: applyPatchArg },
+    };
+  } else if (policy === "dangerous-no-sandbox") {
+    return {
+      type: "auto-approve",
+      reason: "Dangerous no sandbox mode",
+      group: "Editing",
+      runInSandbox: false,
+      applyPatch: { patch: applyPatchArg },
+    };
+  } else {
+    return {
+      type: "ask-user",
+      applyPatch: { patch: applyPatchArg },
+    };
+  }
 }
 
 /**
